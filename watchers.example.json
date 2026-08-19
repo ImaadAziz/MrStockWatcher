@@ -1,0 +1,13 @@
+{
+  "state_file": "state.json",
+  "watchers": [
+    {
+      "name": "Veiled Rouched Swim Tunic",
+      "url": "https://veiled.com/products/rouched-swim-tunic-black",
+      "color": "Black",
+      "size": "XS",
+      "recipient": "+15555555555",
+      "check_interval_minutes": 10
+    }
+  ]
+}

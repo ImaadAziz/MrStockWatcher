@@ -1,0 +1,10 @@
+__pycache__/
+.pycache/
+*.pyc
+
+# Local secrets and runtime state
+telegram_config.json
+watchers.json
+watchers.db
+state.json
+
