@@ -12,7 +12,8 @@ class WatchConfig:
     url: str
     size: str
     color: str
-    recipient: str
+    recipient: str = ""
+    length: str | None = None
     check_interval_minutes: int = 10
 
 
@@ -32,7 +33,7 @@ def load_config(path: str) -> AppConfig:
 
 
 def _load_watch(item: dict[str, Any]) -> WatchConfig:
-    required = ("name", "url", "size", "color", "recipient")
+    required = ("name", "url", "size", "color")
     missing = [key for key in required if not item.get(key)]
     if missing:
         raise ValueError(f"Watcher is missing required fields: {', '.join(missing)}")
@@ -41,6 +42,7 @@ def _load_watch(item: dict[str, Any]) -> WatchConfig:
         url=str(item["url"]),
         size=str(item["size"]),
         color=str(item["color"]),
-        recipient=str(item["recipient"]),
+        recipient=str(item.get("recipient", "")),
+        length=str(item["length"]) if item.get("length") else None,
         check_interval_minutes=int(item.get("check_interval_minutes", 10)),
     )

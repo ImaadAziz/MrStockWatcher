@@ -2,6 +2,23 @@
 
 This project monitors product pages and can notify you either locally through iMessage or through a Telegram bot.
 
+## Hosted setup
+
+The GitHub Actions version uses a static watchlist in `/Users/imaadaziz/Desktop/web_scrape/watchlist.json` and stores last-known availability in `/Users/imaadaziz/Desktop/web_scrape/data/stock_state.json`.
+
+The scheduled workflow is `/Users/imaadaziz/Desktop/web_scrape/.github/workflows/hourly-stock-check.yml`.
+
+Required GitHub Actions secrets:
+
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_CHAT_ID`
+
+The hosted check command is:
+
+```bash
+python3 monitor.py --config watchlist.json hosted-check
+```
+
 ## What v1 does
 
 - Watches one or more products defined in a JSON config file

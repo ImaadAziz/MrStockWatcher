@@ -90,9 +90,10 @@ class ProductTracker:
     def _status_from_product_json(self, product: dict[str, Any], watch: WatchConfig) -> StockStatus:
         variant = self._find_variant(product, watch)
         if variant is None:
-            raise ValueError(
-                f"Could not find a matching variant for size '{watch.size}' and color '{watch.color}'."
-            )
+            details = [f"size '{watch.size}'", f"color '{watch.color}'"]
+            if watch.length:
+                details.append(f"length '{watch.length}'")
+            raise ValueError(f"Could not find a matching variant for {', '.join(details)}.")
         product_title = str(product.get("title") or watch.name)
         variant_title = str(variant.get("title") or watch.size)
         return StockStatus(
@@ -109,6 +110,7 @@ class ProductTracker:
 
         size_names = {"size"}
         color_names = {"color", "colour"}
+        length_names = {"length", "inseam"}
 
         def option_map(variant: dict[str, Any]) -> dict[str, str]:
             mapped: dict[str, str] = {}
@@ -120,30 +122,51 @@ class ProductTracker:
 
         requested_color = watch.color.casefold()
         requested_size = watch.size.casefold()
+        requested_length = watch.length.casefold() if watch.length else ""
+        has_color_option = any(name in color_names for name in options)
+        has_size_option = any(name in size_names for name in options)
+        has_length_option = any(name in length_names for name in options)
 
-        if any(name in color_names for name in options):
-            for variant in variants:
-                mapped = option_map(variant)
-                color_value = next((mapped[name] for name in mapped if name in color_names), "")
-                size_value = next((mapped[name] for name in mapped if name in size_names), "")
-                if color_value.casefold() == requested_color and size_value.casefold() == requested_size:
-                    return variant
+        if has_length_option and not requested_length:
+            raise ValueError("This product requires a length option, but the watch config did not provide one.")
 
-        if any(name in size_names for name in options):
+        if not has_color_option:
             page_color = self._infer_page_color(product, watch.url)
             if page_color.casefold() != requested_color:
                 raise ValueError(
                     f"Requested color '{watch.color}' does not match page color '{page_color}'."
                 )
-            for variant in variants:
-                mapped = option_map(variant)
+
+        for variant in variants:
+            mapped = option_map(variant)
+
+            if has_color_option:
+                color_value = next((mapped[name] for name in mapped if name in color_names), "")
+                if color_value.casefold() != requested_color:
+                    continue
+
+            if has_size_option:
                 size_value = next((mapped[name] for name in mapped if name in size_names), "")
-                if size_value.casefold() == requested_size:
-                    return variant
+                if size_value.casefold() != requested_size:
+                    continue
+
+            if has_length_option:
+                length_value = next((mapped[name] for name in mapped if name in length_names), "")
+                if length_value.casefold() != requested_length:
+                    continue
+
+            return variant
 
         for variant in variants:
             title = str(variant.get("title", ""))
-            if requested_size in title.casefold() and requested_color in title.casefold():
+            title_casefold = title.casefold()
+            if requested_size not in title_casefold:
+                continue
+            if requested_length and requested_length not in title_casefold:
+                continue
+            if has_color_option and requested_color not in title_casefold:
+                continue
+            if not has_color_option or requested_color in title_casefold:
                 return variant
         return None
 
@@ -172,6 +195,13 @@ class ProductTracker:
             in_stock=in_stock,
             product_title=title,
             variant_id=None,
-            variant_label=f"{watch.color} / {watch.size}",
+            variant_label=_fallback_variant_label(watch),
             source="html_fallback",
         )
+
+
+def _fallback_variant_label(watch: WatchConfig) -> str:
+    parts = [watch.color, watch.size]
+    if watch.length:
+        parts.append(watch.length)
+    return " / ".join(parts)

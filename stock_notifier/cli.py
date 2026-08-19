@@ -73,6 +73,12 @@ def main() -> int:
     )
     telegram_check_parser.add_argument("--poll-timeout-seconds", default=1, type=int)
 
+    hosted_check_parser = subparsers.add_parser(
+        "hosted-check",
+        help="Run the static watchlist check used by GitHub Actions and send Telegram alerts.",
+    )
+    hosted_check_parser.add_argument("--dry-run", action="store_true", help="Print Telegram alerts instead of sending.")
+
     args = parser.parse_args()
 
     if args.command == "test-notification":
@@ -133,6 +139,9 @@ def main() -> int:
             )
         )
         return 0
+    if args.command == "hosted-check":
+        config = load_config(args.config)
+        return run_hosted_check(config, dry_run=args.dry_run)
 
     config = load_config(args.config)
     if args.command == "check":
@@ -201,7 +210,64 @@ def run_check(config: AppConfig, dry_run: bool) -> int:
 
 
 def _watch_key(watch: WatchConfig) -> str:
-    return f"{watch.url}::{watch.color.casefold()}::{watch.size.casefold()}"
+    length = watch.length.casefold() if watch.length else ""
+    return f"{watch.url}::{watch.color.casefold()}::{watch.size.casefold()}::{length}"
+
+
+def run_hosted_check(config: AppConfig, dry_run: bool) -> int:
+    tracker = ProductTracker()
+    store = StateStore(config.state_file)
+    state = store.load()
+    had_error = False
+    token = _telegram_token()
+    chat_id = _telegram_chat_id()
+    client = TelegramBotClient(token)
+
+    for watch in config.watchers:
+        try:
+            status = tracker.fetch_status(watch)
+        except Exception as exc:
+            had_error = True
+            print(f"[{watch.name}] check failed for {_watch_display(watch)}: {exc}")
+            continue
+
+        watch_key = _watch_key(watch)
+        previous = state.get(watch_key, {})
+        now_in_stock = "true" if status.in_stock else "false"
+        previous_in_stock = previous.get("in_stock")
+        variant_url = _variant_url(watch.url, status.variant_id)
+
+        print(f"[{watch.name}] {_watch_display(watch)}: {'IN STOCK' if status.in_stock else 'out of stock'}")
+
+        if previous_in_stock != now_in_stock and status.in_stock:
+            message = "\n".join(
+                [
+                    f"Restock alert: {status.product_title}",
+                    f"Variant: {_watch_display(watch)}",
+                    f"Link: {variant_url}",
+                ]
+            )
+            if dry_run:
+                print(f"DRY RUN Telegram alert to {chat_id}: {message}")
+            else:
+                client.send_message(chat_id, message)
+
+        state[watch_key] = {
+            "in_stock": now_in_stock,
+            "url": variant_url,
+            "name": watch.name,
+            "size": watch.size,
+            "color": watch.color,
+            "length": watch.length or "",
+            "variant_id": status.variant_id or "",
+            "variant_label": status.variant_label,
+            "product_title": status.product_title,
+            "source": status.source,
+            "checked_at": str(int(time.time())),
+        }
+
+    store.save(state)
+    return 1 if had_error else 0
 
 
 def _print_variants_table(variants: list) -> None:
@@ -222,3 +288,24 @@ def _telegram_token() -> str:
     if not token:
         raise ValueError("Set TELEGRAM_BOT_TOKEN before using Telegram commands.")
     return token
+
+
+def _telegram_chat_id() -> int:
+    raw = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+    if not raw:
+        raise ValueError("Set TELEGRAM_CHAT_ID before using hosted Telegram alerts.")
+    return int(raw)
+
+
+def _watch_display(watch: WatchConfig) -> str:
+    parts = [watch.color, watch.size]
+    if watch.length:
+        parts.append(watch.length)
+    return " / ".join(parts)
+
+
+def _variant_url(url: str, variant_id: str | None) -> str:
+    base_url = url.split("?", 1)[0]
+    if variant_id:
+        return f"{base_url}?variant={variant_id}"
+    return base_url

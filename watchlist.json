@@ -1,0 +1,43 @@
+{
+  "state_file": "data/stock_state.json",
+  "watchers": [
+    {
+      "name": "Rouched Swim Tunic - Black",
+      "url": "https://veiled.com/products/rouched-swim-tunic-black?variant=42386895044713",
+      "color": "Black",
+      "size": "S"
+    },
+    {
+      "name": "Rouched Swim Tunic - Black",
+      "url": "https://veiled.com/products/rouched-swim-tunic-black?variant=42386895077481",
+      "color": "Black",
+      "size": "M"
+    },
+    {
+      "name": "Wide Leg Swim Pants - Black",
+      "url": "https://veiled.com/products/wide-leg-swim-pants-black?variant=42371547988073",
+      "color": "Black",
+      "size": "S",
+      "length": "Regular"
+    },
+    {
+      "name": "Wide Leg Swim Pants - Black",
+      "url": "https://veiled.com/products/wide-leg-swim-pants-black?variant=42371548086377",
+      "color": "Black",
+      "size": "M",
+      "length": "Regular"
+    },
+    {
+      "name": "Swim Tunic - Cove",
+      "url": "https://veiled.com/products/swim-tunic-cove?variant=42386912378985",
+      "color": "Cove",
+      "size": "S"
+    },
+    {
+      "name": "Swim Tunic - Cove",
+      "url": "https://veiled.com/products/swim-tunic-cove?variant=42386912411753",
+      "color": "Cove",
+      "size": "M"
+    }
+  ]
+}
